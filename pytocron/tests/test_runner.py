@@ -18,6 +18,7 @@ from .._crontab_parser import CrontabEntry, _frequency_seven
 from .._runner import (
     _ATTRIBUTE_STARTED,
     _HARD_KILL_TOLERANCE_SECONDS,
+    _SLEEP_PRECISE_THRESHOLD_SECONDS,
     _create_cronjob_argv,
     _notify_healthchecks_io,
     _PingingFailedError,
@@ -167,9 +168,13 @@ class RunSingleCronJobTest(TestCase):
         ):
             _run_single_cron_job(crontab_entry, pretend=False)
 
-        self.assertEqual(sleep_mock.call_count, 3)
-        for i in range(3):
-            self.assertGreaterEqual(sleep_mock.call_args_list[i].args[0], 1)
+        self.assertGreater(sleep_mock.call_count, 3)
+        for call in sleep_mock.call_args_list:
+            self.assertGreater(call.args[0], 0)
+        self.assertLessEqual(
+            sleep_mock.call_args_list[-1].args[0],
+            _SLEEP_PRECISE_THRESHOLD_SECONDS,
+        )
 
         self.assertEqual(notify_healthchecks_io_mock.call_count, 3)
         for i in range(3):
@@ -194,9 +199,13 @@ class RunSingleCronJobTest(TestCase):
         ):
             _run_single_cron_job(crontab_entry, pretend=False)
 
-        self.assertEqual(sleep_mock.call_count, 3)
-        for i in range(3):
-            self.assertGreaterEqual(sleep_mock.call_args_list[i].args[0], 1)
+        self.assertGreater(sleep_mock.call_count, 3)
+        for call in sleep_mock.call_args_list:
+            self.assertGreater(call.args[0], 0)
+        self.assertLessEqual(
+            sleep_mock.call_args_list[-1].args[0],
+            _SLEEP_PRECISE_THRESHOLD_SECONDS,
+        )
 
         self.assertEqual(notify_healthchecks_io_mock.call_count, 3)
         for i in range(3):

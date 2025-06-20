@@ -32,6 +32,8 @@ _ATTRIBUTE_STARTED = "_started"
 
 _HARD_KILL_TOLERANCE_SECONDS = 5
 
+_SLEEP_PRECISE_THRESHOLD_SECONDS = 10
+
 _SHELL_ARGV = ["bash", "-euc"]
 _SETSID_ARGV = ["setsid", "--wait"]
 
@@ -75,7 +77,7 @@ def _create_cronjob_argv(command: str, tolerated_runtime_seconds: int | None) ->
     return _SETSID_ARGV + timeout_argv + _SHELL_ARGV + [command]
 
 
-def _run_single_cron_job(  # noqa: C901
+def _run_single_cron_job(  # noqa: C901, PLR0912
     crontab_entry: CrontabEntry,
     *,
     pretend: bool,
@@ -102,8 +104,14 @@ def _run_single_cron_job(  # noqa: C901
             f" ({math.ceil(sleep_seconds)} seconds from now).",
         )
 
-        if sleep_seconds > 0:
-            time.sleep(sleep_seconds)
+        while True:
+            remaining = next_run_epoch - localtime_epoch()
+            if remaining <= 0:
+                break
+            if remaining <= _SLEEP_PRECISE_THRESHOLD_SECONDS:
+                time.sleep(remaining)
+                break
+            time.sleep(remaining / 2)
 
         if second_next_run_epoch is None:
             tolerated_runtime_seconds = None  # i.e. unlimited
